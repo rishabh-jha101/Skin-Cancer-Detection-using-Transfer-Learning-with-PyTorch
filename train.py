@@ -1,8 +1,9 @@
 import numpy as np
 import torch
 import torch.optim as optim
-from model import Net
-from prepare import train_loader
+import torch.nn as nn
+from model import vgg16
+from prepare import train_loader, valid_loader
 
 # check if CUDA is available
 train_on_gpu = torch.cuda.is_available()
@@ -12,22 +13,25 @@ if not train_on_gpu:
 else:
     print('CUDA is available!  Training on GPU ...')
 
-model = Net()
-print(model)
 # move tensors to GPU if CUDA is available
 if train_on_gpu:
-    model.cuda()
+    vgg16.cuda()
 
 # specify loss function
 criterion = nn.CrossEntropyLoss()
 
 # specify optimizer (learning rate too)
-optimizer = optim.Adam(model.parameters(), lr = 0.001)
+optimizer = optim.Adam(vgg16.classifier.parameters(), lr = 0.001)
+
+# Freeze training for all "features" layers
+for param in vgg16.features.parameters():
+    param.requires_grad = False
+
 
 # number of epochs to train the model
-n_epochs = # you may increase this number to train a final model
+n_epochs = 10# you may increase this number to train a final model
 
-valid_loss_min = np.Inf # track change in validation loss
+valid_loss_min = np.Inf # track change in validation loss(starting with infinity)
 
 for epoch in range(1, n_epochs+1):
 
@@ -38,7 +42,7 @@ for epoch in range(1, n_epochs+1):
     ###################
     # train the model #
     ###################
-    model.train()
+    vgg16.train()
     for data, target in train_loader:
         # move tensors to GPU if CUDA is available
         if train_on_gpu:
@@ -46,7 +50,7 @@ for epoch in range(1, n_epochs+1):
         # clear the gradients of all optimized variables
         optimizer.zero_grad()
         # forward pass: compute predicted outputs by passing inputs to the model
-        output = model(data)
+        output = vgg16(data)
         # calculate the batch loss
         loss = criterion(output, target)
         # backward pass: compute gradient of the loss with respect to model parameters
@@ -59,13 +63,13 @@ for epoch in range(1, n_epochs+1):
     ######################
     # validate the model #
     ######################
-    model.eval()
+    vgg16.eval()
     for data, target in valid_loader:
         # move tensors to GPU if CUDA is available
         if train_on_gpu:
             data, target = data.cuda(), target.cuda()
         # forward pass: compute predicted outputs by passing inputs to the model
-        output = model(data)
+        output = vgg16(data)
         # calculate the batch loss
         loss = criterion(output, target)
         # update average validation loss
@@ -84,5 +88,5 @@ for epoch in range(1, n_epochs+1):
         print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(
         valid_loss_min,
         valid_loss))
-        torch.save(model.state_dict(), 'model_cifar.pt')
+        torch.save(vgg16.state_dict(), 'vgg16_skin_cancer.pt')
         valid_loss_min = valid_loss
