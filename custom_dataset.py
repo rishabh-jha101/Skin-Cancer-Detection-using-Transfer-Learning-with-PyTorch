@@ -23,6 +23,8 @@ class SkinCancerDataset(Dataset):
         img_name = os.path.join(self.root,
                                 self.info.iloc[idx, 0])+".jpg"
         image = Image.open(img_name).convert("RGB")
-
+        if self.transforms is not None:
+            img_as_tensor = self.transforms(image)
+        label = self.info.iloc[idx, 1]        
 
         return (img_as_tensor, torch.tensor(int(label)))
